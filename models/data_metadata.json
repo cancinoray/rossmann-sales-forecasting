@@ -1,0 +1,29 @@
+{
+  "source": {
+    "train": "https://huggingface.co/datasets/AiiN-aini/rossmann-store-sales/resolve/main/train.csv",
+    "store": "https://huggingface.co/datasets/AiiN-aini/rossmann-store-sales/resolve/main/store.csv",
+    "original_competition": "https://www.kaggle.com/competitions/rossmann-store-sales"
+  },
+  "raw_sha256": {
+    "train": "f6e4597c142d7d909a13d53b68a8e85c00b9a4c7b5ff40adbb37d6829cc1f4cc",
+    "store": "f56bd124a2849489e6bbb5c000f5fc9640204355e316475c918ae4d089afb344"
+  },
+  "processed_sha256": "0b9921c25cce74e03aeeb73b853cb06110c5b80623b4ae9d8737100a16f3518c",
+  "rows": 844338,
+  "split_rows": {
+    "train": 785727,
+    "test": 30188,
+    "validation": 28423
+  },
+  "date_min": "2013-01-01T00:00:00",
+  "date_max": "2015-07-31T00:00:00",
+  "split_dates": {
+    "train": "< 2015-06-01",
+    "validation": "2015-06-01 to < 2015-07-01",
+    "test": ">= 2015-07-01"
+  },
+  "filters": {
+    "open": 1,
+    "sales_gt": 0
+  }
+}

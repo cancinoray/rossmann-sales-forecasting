@@ -1,0 +1,244 @@
+{
+  "model_version": "0.1.0",
+  "model_type": "xgboost",
+  "trained_at": "2026-11-06T19:16:48.024580+00:00",
+  "selected_on": "validation RMSE",
+  "data": {
+    "source": {
+      "train": "https://huggingface.co/datasets/AiiN-aini/rossmann-store-sales/resolve/main/train.csv",
+      "store": "https://huggingface.co/datasets/AiiN-aini/rossmann-store-sales/resolve/main/store.csv",
+      "original_competition": "https://www.kaggle.com/competitions/rossmann-store-sales"
+    },
+    "raw_sha256": {
+      "train": "f6e4597c142d7d909a13d53b68a8e85c00b9a4c7b5ff40adbb37d6829cc1f4cc",
+      "store": "f56bd124a2849489e6bbb5c000f5fc9640204355e316475c918ae4d089afb344"
+    },
+    "processed_sha256": "0b9921c25cce74e03aeeb73b853cb06110c5b80623b4ae9d8737100a16f3518c",
+    "rows": 844338,
+    "split_rows": {
+      "train": 785727,
+      "test": 30188,
+      "validation": 28423
+    },
+    "date_min": "2013-01-01T00:00:00",
+    "date_max": "2015-07-31T00:00:00",
+    "split_dates": {
+      "train": "< 2015-06-01",
+      "validation": "2015-06-01 to < 2015-07-01",
+      "test": ">= 2015-07-01"
+    },
+    "filters": {
+      "open": 1,
+      "sales_gt": 0
+    }
+  },
+  "rows": {
+    "train": 785727,
+    "validation": 28423,
+    "test": 30188
+  },
+  "metrics": {
+    "selected_validation": {
+      "rmse": 921.5342844951565,
+      "mae": 644.1861572265625,
+      "r2": 0.921086311340332
+    },
+    "test": {
+      "rmse": 936.5859877768831,
+      "mae": 677.5960693359375,
+      "r2": 0.8983192443847656
+    },
+    "baseline": {
+      "validation": {
+        "rmse": 2272.8675030025033,
+        "mae": 1654.1240192801604,
+        "r2": 0.5199596677157672
+      },
+      "test": {
+        "rmse": 1776.7502236884911,
+        "mae": 1333.4388829998675,
+        "r2": 0.6340715524230983
+      }
+    },
+    "all_models": {
+      "baseline": {
+        "validation": {
+          "rmse": 2272.8675030025033,
+          "mae": 1654.1240192801604,
+          "r2": 0.5199596677157672
+        },
+        "test": {
+          "rmse": 1776.7502236884911,
+          "mae": 1333.4388829998675,
+          "r2": 0.6340715524230983
+        }
+      },
+      "ridge": {
+        "validation": {
+          "rmse": 1437.5397022613433,
+          "mae": 1009.2350053568703,
+          "r2": 0.8079699543521752
+        },
+        "test": {
+          "rmse": 1341.697109975355,
+          "mae": 1009.7388662652096,
+          "r2": 0.7913336669058972
+        },
+        "alpha": 0.1,
+        "tuning": [
+          {
+            "alpha": 0.1,
+            "validation_rmse": 1437.5397022613433
+          },
+          {
+            "alpha": 1.0,
+            "validation_rmse": 1437.6319497803474
+          },
+          {
+            "alpha": 10.0,
+            "validation_rmse": 1438.853395507667
+          }
+        ]
+      },
+      "random_forest": {
+        "validation": {
+          "rmse": 1946.8632144413984,
+          "mae": 1379.6649438632633,
+          "r2": 0.647791066079096
+        },
+        "test": {
+          "rmse": 1835.96020623146,
+          "mae": 1350.7636075007447,
+          "r2": 0.6092761305661247
+        }
+      },
+      "xgboost": {
+        "validation": {
+          "rmse": 921.5342844951565,
+          "mae": 644.1861572265625,
+          "r2": 0.921086311340332
+        },
+        "test": {
+          "rmse": 934.4926430957067,
+          "mae": 672.9443359375,
+          "r2": 0.8987732529640198
+        },
+        "params": {
+          "max_depth": 8,
+          "learning_rate": 0.1,
+          "subsample": 0.8,
+          "colsample_bytree": 0.8
+        },
+        "best_iteration": 108,
+        "tuning": [
+          {
+            "max_depth": 6,
+            "learning_rate": 0.05,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "best_iteration": 553,
+            "validation_rmse": 944.7591955096283
+          },
+          {
+            "max_depth": 8,
+            "learning_rate": 0.05,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "best_iteration": 465,
+            "validation_rmse": 922.5025745221527
+          },
+          {
+            "max_depth": 10,
+            "learning_rate": 0.05,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "best_iteration": 224,
+            "validation_rmse": 975.3347181865311
+          },
+          {
+            "max_depth": 8,
+            "learning_rate": 0.03,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "best_iteration": 554,
+            "validation_rmse": 940.1609569642849
+          },
+          {
+            "max_depth": 8,
+            "learning_rate": 0.1,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "best_iteration": 108,
+            "validation_rmse": 921.5342844951565
+          },
+          {
+            "max_depth": 6,
+            "learning_rate": 0.1,
+            "subsample": 0.9,
+            "colsample_bytree": 0.7,
+            "best_iteration": 183,
+            "validation_rmse": 941.2663677195739
+          }
+        ]
+      }
+    }
+  },
+  "features": {
+    "all": [
+      "store",
+      "state_holiday",
+      "store_type",
+      "assortment",
+      "promo_interval",
+      "day_of_week",
+      "promo",
+      "school_holiday",
+      "competition_distance",
+      "competition_open_months",
+      "promo2",
+      "promo2_open_months",
+      "year",
+      "month",
+      "day",
+      "week_of_year",
+      "day_of_year",
+      "is_month_start",
+      "is_month_end",
+      "is_weekend",
+      "days_to_christmas"
+    ],
+    "categorical": [
+      "store",
+      "state_holiday",
+      "store_type",
+      "assortment",
+      "promo_interval"
+    ],
+    "numeric": [
+      "day_of_week",
+      "promo",
+      "school_holiday",
+      "competition_distance",
+      "competition_open_months",
+      "promo2",
+      "promo2_open_months",
+      "year",
+      "month",
+      "day",
+      "week_of_year",
+      "day_of_year",
+      "is_month_start",
+      "is_month_end",
+      "is_weekend",
+      "days_to_christmas"
+    ]
+  },
+  "library_versions": {
+    "python": "3.12.12",
+    "pandas": "3.1.1",
+    "numpy": "2.5.4",
+    "scikit_learn": "1.9.1",
+    "xgboost": "3.4.1"
+  },
+  "notes": "Temporal split; closed and zero-sales days were filtered before training. The test month was not used for model selection or early stopping. Ridge alpha and XGBoost depth/learning-rate were tuned on the validation month."
+}
