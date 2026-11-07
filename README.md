@@ -1,6 +1,6 @@
 # Rossmann Daily Sales Forecasting
 
-Predict daily sales for **1,115 Rossmann stores** from calendar, promotion, holiday, and static store features — then serve the forecast through a FastAPI endpoint in Docker.
+Predict daily sales for **1,115 Rossmann stores** from calendar, promotion, holiday, and static store features — then serve the forecast through a FastAPI endpoint and an interactive Streamlit dashboard, packaged in Docker.
 
 This is the midterm project for [ML Zoomcamp 2026](https://github.com/DataTalksClub/machine-learning-zoomcamp). It applies modules 1–6: problem framing, regression, evaluation, deployment, and tree-based models.
 
@@ -57,7 +57,9 @@ flowchart LR
     I --> J[refit on train + validation]
     J --> K[model.joblib + metadata]
     K --> L[FastAPI /predict]
+    K --> N[Streamlit dashboard]
     L --> M[Docker image]
+    N --> M
 ```
 
 ### The split is temporal, not random
@@ -83,25 +85,25 @@ A random split would let the model see the future; a sales model must be judged 
 | View | Finding |
 |---|---|
 | Target | mean **€6,956**, median **€6,369**, std **€3,104** |
-| Promo | promo days average **€8,229** vs **€5,930** without — a **+38.7%** lift |
+| Promo | promo days average **€8,229** vs **€5,930** without — a **+38.8%** lift |
 | Day of week | Sunday **€8,225**, Monday **€8,216**, Saturday **€5,875** (lowest) |
 | Store type | type **b** averages **€10,233** vs **~€6,800–6,930** for a/c/d |
 | Seasonality | December **€8,609** peak; February **€6,589** low |
 | Holidays | type b **€9,888**, type c **€9,744**, type a **€8,488**, none **€6,954** |
 
-The notebook expands these into distributions, missingness, store-level variation, and a promo × day-of-week view.
+The notebook is a guided walkthrough — every section explains the idea, the code, and the output in plain language. It expands these highlights into distributions, missingness, monthly seasonality, promo/weekday/store-type means, feature importance, and slice-by-slice error analysis.
 
 ---
 
 ## Models and results
 
-All metrics are on **open store-days**, in euros. The final model is refit on train + validation and scored once on the test month.
+All metrics are on **open store-days**, in euros. The baseline, Ridge, and random-forest rows come from one fit on the training window, so their validation and test scores describe that single model. The **XGBoost row is the served artifact**: the tuned winner refit on train + validation, then scored once on the test month. Its pre-refit score (fitted on train only) was 934.49 RMSE / 672.94 MAE / 0.899 R².
 
 | Model | Validation RMSE | Validation MAE | Test RMSE | Test MAE | Test R² |
 |---|---:|---:|---:|---:|---:|
-| Store-median baseline | 2,272.87 | 1,654.12 | 1,776.75 | 1,333.44 | 0.630 |
-| Ridge (alpha tuned = 0.1) | 1,437.54 | 1,009.24 | 1,341.70 | 1,009.74 | 0.790 |
-| Random forest | 1,946.86 | 1,379.66 | 1,835.96 | 1,350.76 | 0.610 |
+| Store-median baseline | 2,272.87 | 1,654.12 | 1,776.75 | 1,333.44 | 0.634 |
+| Ridge (alpha tuned = 0.1) | 1,437.54 | 1,009.24 | 1,341.70 | 1,009.74 | 0.791 |
+| Random forest | 1,946.86 | 1,379.66 | 1,835.96 | 1,350.76 | 0.609 |
 | **XGBoost (tuned)** | **921.53** | **644.19** | **936.59** | **677.60** | **0.898** |
 
 **Selected:** XGBoost, `max_depth=8`, `learning_rate=0.1`, `best_iteration=108`, refit on train + validation.
@@ -166,6 +168,27 @@ The endpoint is stateless and loads the model once at startup. `/health` exposes
 
 ---
 
+## Streamlit dashboard
+
+```bash
+make ui        # http://localhost:8501
+```
+
+The dashboard reads the same artifact through `serving.SalesForecaster`, so its headline forecast matches `POST /predict` exactly — store 1 on 2015-08-15 with a promo returns **€4,829.68** in both places.
+
+It has four tabs:
+
+- **Forecast:** a store-day price tag with the forecast, the store median, last-28-day mean, and same-weekday mean; the learned promo lift; and the exact 21-feature row the model receives.
+- **Week ahead:** 7–28 days as a receipt, with promo weekdays and school holidays. Weekdays the store never opened on (store 1 has no Sundays) are marked closed and excluded from the total. The table downloads as CSV.
+- **Model card:** test RMSE / MAE / R², the model comparison, the six-point XGBoost tuning grid, the selected parameters, feature groups, and the artifact hashes.
+- **Data:** monthly seasonality, promo lift by weekday, and the selected store's weekday rhythm.
+
+![Streamlit dashboard](docs/dashboard.png)
+
+The page is a view on the service, not a replacement for it: FastAPI remains the deployment interface, and both are served from the same image.
+
+---
+
 ## Run it locally
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
@@ -176,10 +199,11 @@ uv sync
 make data       # optional: rebuilds data/processed/rossmann.parquet from raw
 make train      # retrains and rewrites models/model.joblib + metadata
 make serve      # http://localhost:9696
+make ui         # http://localhost:8501
 make test       # pytest
 ```
 
-The committed artifact means `make serve` works without retraining. `make train` takes a few minutes (Ridge, forest, six XGBoost candidates, final refit).
+The committed artifact means `make serve` and `make ui` work without retraining. `make train` takes a few minutes (Ridge, forest, six XGBoost candidates, final refit).
 
 ### Docker
 
@@ -188,7 +212,26 @@ docker build -t rossmann-sales .
 docker run --rm -p 9696:9696 rossmann-sales
 ```
 
-The image uses `python:3.12-slim-bookworm`, copies `uv` from its official image, and installs with `uv sync --locked --no-dev`, so the container resolves the same lockfile as the host.
+The same image also runs the dashboard:
+
+```bash
+docker run --rm -p 8501:8501 rossmann-sales \
+  streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+```
+
+The image uses `python:3.12-slim-bookworm`, copies `uv` from its official image, and installs with `uv sync --locked --no-dev`, so the container resolves the same lockfile as the host. `docker_healthcheck.py` accepts either service: a real `/health` request on 9696, or a TCP check on 8501.
+
+### Streamlit Community Cloud
+
+The dashboard is self-contained: it loads `models/` and `data/processed/rossmann.parquet` directly, so it does not need the FastAPI service to be running.
+
+1. Push the repository to GitHub.
+2. Go to [share.streamlit.io](https://share.streamlit.io) and click **Create app**.
+3. Pick the repository and branch, and set **Main file path** to `streamlit_app.py`.
+4. Open **Advanced settings** and choose **Python 3.12** — Community Cloud cannot change the Python version later without deleting and redeploying the app.
+5. Deploy. The first build installs the environment from `uv.lock`, which Community Cloud detects before `requirements.txt` or `pyproject.toml`.
+
+Community Cloud ignores `runtime.txt`; the Python version comes from the Advanced-settings step. The free tier serves public apps and sleeps after inactivity, so the first visit after a pause pays a cold-start cost. The FastAPI endpoint is not hosted there — use Render, Fly, or Railway for a public API if you want one.
 
 ---
 
@@ -201,9 +244,14 @@ rossmann-sales-forecasting/
 ├── prepare_data.py           # download, verify, clean, split
 ├── train.py                  # baseline, Ridge, RF, XGBoost, refit, save
 ├── predict.py                # FastAPI: /health, /predict
+├── streamlit_app.py          # Streamlit dashboard
+├── serving.py                # model loading + prediction shared by both front ends
+├── history.py                # store history and EDA aggregates for the dashboard
 ├── model.py                  # feature engineering shared by train + serve
 ├── pyproject.toml, uv.lock, .python-version
 ├── Dockerfile, .dockerignore, Makefile
+├── docker_healthcheck.py     # container healthcheck for either service
+├── .streamlit/config.toml    # dashboard theme
 ├── data/
 │   ├── raw/                  # gitignored: train.csv, store.csv
 │   └── processed/rossmann.parquet
@@ -213,10 +261,13 @@ rossmann-sales-forecasting/
 │   ├── feature_metadata.json # feature order + categorical levels
 │   ├── store_metadata.json   # static store attributes for inference
 │   └── data_metadata.json    # row counts, split dates, checksums
-├── tests/test_api.py
+├── tests/
+│   ├── test_api.py
+│   ├── test_serving.py
+│   ├── test_history.py
+│   └── test_streamlit_app.py
 └── docs/
-    ├── PLAN.md               # working plan and rubric mapping
-    └── DATASETS.md           # dataset shortlist and why Rossmann
+    └── dashboard.png         # Streamlit screenshot
 ```
 
 ### Reproducibility
@@ -225,7 +276,18 @@ rossmann-sales-forecasting/
 - `prepare_data.py` verifies the raw SHA-256 before building.
 - `models/data_metadata.json` records the processed SHA-256, row counts, and split boundaries.
 - `models/model_metadata.json` records metrics, tuned parameters, library versions, and the training timestamp.
-- A fresh `uv sync && make test` runs the API tests against the committed artifact.
+- A fresh `uv sync && make test` runs the API, serving, history, and dashboard (Streamlit `AppTest`) tests against the committed artifact.
+
+### Tests
+
+26 tests, all runnable without retraining:
+
+| File | Covers |
+|---|---|
+| `tests/test_api.py` | `/health`, `/predict`, validation (422/404), determinism |
+| `tests/test_serving.py` | shared prediction layer, documented €4,829.68 example, batch/single parity |
+| `tests/test_history.py` | store history, weekday profile, promo pivot |
+| `tests/test_streamlit_app.py` | dashboard renders, store switch recomputes, CSV present |
 
 ---
 
@@ -234,16 +296,16 @@ rossmann-sales-forecasting/
 | Rubric item | Status |
 |---|---|
 | Problem description (2) | ✅ README §1 |
-| EDA (2) | ✅ README highlights + `notebook.ipynb` (expand there) |
+| EDA (2) | ✅ README highlights + guided `notebook.ipynb` |
 | Multiple models + tuning (3) | ✅ Ridge, RF, XGBoost; Ridge alpha + XGBoost grid |
 | Notebook → script (1) | ✅ `train.py` |
 | Reproducibility (1) | ✅ committed parquet, hashes, lockfile |
-| Deployment (1) | ✅ FastAPI |
+| Deployment (1) | ✅ FastAPI + Streamlit dashboard |
 | Dependency management (2) | ✅ `uv` + lock + README |
 | Containerization (2) | ✅ `Dockerfile` |
-| Cloud deployment (2, optional) | ⬜ not included; see next steps |
+| Cloud deployment (2, optional) | ⬜ not deployed; Community Cloud steps in README |
 
-**Before submitting:** finish the notebook EDA sections, add screenshots/URL if you deploy to Render/Fly, and record the exact commit SHA in the submission form.
+**Before submitting:** record the exact commit SHA in the submission form, and add the screenshot/URL if you deploy to Render/Fly.
 
 ---
 
