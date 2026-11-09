@@ -1,5 +1,7 @@
 # Rossmann Daily Sales Forecasting
 
+**Live demo:** [rossmann-sales-forecasting-cancinoray.streamlit.app](https://rossmann-sales-forecasting-cancinoray.streamlit.app/)
+
 Predict daily sales for **1,115 Rossmann stores** from calendar, promotion, holiday, and static store features — then serve the forecast through a FastAPI endpoint and an interactive Streamlit dashboard, packaged in Docker.
 
 This is the midterm project for [ML Zoomcamp 2026](https://github.com/DataTalksClub/machine-learning-zoomcamp). It applies modules 1–6: problem framing, regression, evaluation, deployment, and tree-based models.
@@ -87,17 +89,17 @@ A random split would let the model see the future; a sales model must be judged 
 | Target | mean **€6,956**, median **€6,369**, std **€3,104** |
 | Promo | promo days average **€8,229** vs **€5,930** without — a **+38.8%** lift |
 | Day of week | Sunday **€8,225**, Monday **€8,216**, Saturday **€5,875** (lowest) |
-| Store type | type **b** averages **€10,233** vs **~€6,800–6,930** for a/c/d |
+| Store type | type **b** averages **€10,233** vs **€6,822–6,933** for a/c/d |
 | Seasonality | December **€8,609** peak; February **€6,589** low |
 | Holidays | type b **€9,888**, type c **€9,744**, type a **€8,488**, none **€6,954** |
 
-The notebook is a guided walkthrough — every section explains the idea, the code, and the output in plain language. It expands these highlights into distributions, missingness, monthly seasonality, promo/weekday/store-type means, feature importance, and slice-by-slice error analysis.
+The notebook is a guided walkthrough — every section explains the idea, the code, and the output in plain language. Starting from the cleaned parquet built by `prepare_data.py`, it expands these highlights into distributions, missingness, monthly seasonality, promo/weekday/store-type means, feature importance, and slice-by-slice error analysis.
 
 ---
 
 ## Models and results
 
-All metrics are on **open store-days**, in euros. The baseline, Ridge, and random-forest rows come from one fit on the training window, so their validation and test scores describe that single model. The **XGBoost row is the served artifact**: the tuned winner refit on train + validation, then scored once on the test month. Its pre-refit score (fitted on train only) was 934.49 RMSE / 672.94 MAE / 0.899 R².
+All metrics are on **open store-days**, in euros. The baseline, Ridge, and random-forest rows are evaluated from the training window only, so their validation and test scores describe a single pass (the baseline is the store median). The **XGBoost row is the served artifact**: the tuned winner refit on train + validation, then scored once on the test month. Its pre-refit score (fitted on train only) was 934.49 RMSE / 672.94 MAE / 0.899 R².
 
 | Model | Validation RMSE | Validation MAE | Test RMSE | Test MAE | Test R² |
 |---|---:|---:|---:|---:|---:|
@@ -170,6 +172,8 @@ The endpoint is stateless and loads the model once at startup. `/health` exposes
 
 ## Streamlit dashboard
 
+The deployed app is at [rossmann-sales-forecasting-cancinoray.streamlit.app](https://rossmann-sales-forecasting-cancinoray.streamlit.app/); the screenshot below links to it. To run it locally:
+
 ```bash
 make ui        # http://localhost:8501
 ```
@@ -183,7 +187,7 @@ It has four tabs:
 - **Model card:** test RMSE / MAE / R², the model comparison, the six-point XGBoost tuning grid, the selected parameters, feature groups, and the artifact hashes.
 - **Data:** monthly seasonality, promo lift by weekday, and the selected store's weekday rhythm.
 
-![Streamlit dashboard](docs/dashboard.png)
+[![Streamlit dashboard](docs/dashboard.png)](https://rossmann-sales-forecasting-cancinoray.streamlit.app/)
 
 The page is a view on the service, not a replacement for it: FastAPI remains the deployment interface, and both are served from the same image.
 
@@ -191,16 +195,23 @@ The page is a view on the service, not a replacement for it: FastAPI remains the
 
 ## Run it locally
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.12.
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.12. `uv` is the package manager and `uv.lock` pins every dependency.
 
 ```bash
 cd rossmann-sales-forecasting
-uv sync
-make data       # optional: rebuilds data/processed/rossmann.parquet from raw
-make train      # retrains and rewrites models/model.joblib + metadata
-make serve      # http://localhost:9696
-make ui         # http://localhost:8501
-make test       # pytest
+uv sync --locked      # creates .venv/ from the lockfile
+make data             # optional: rebuilds data/processed/rossmann.parquet from raw
+make train            # retrains and rewrites models/model.joblib + metadata
+make serve            # http://localhost:9696
+make ui               # http://localhost:8501
+make test             # pytest
+```
+
+The `make` run and test targets call `uv run`, which uses `.venv/` automatically. To activate the environment in a shell:
+
+```bash
+source .venv/bin/activate      # macOS / Linux
+.venv\Scripts\activate         # Windows
 ```
 
 The committed artifact means `make serve` and `make ui` work without retraining. `make train` takes a few minutes (Ridge, forest, six XGBoost candidates, final refit).
@@ -223,15 +234,21 @@ The image uses `python:3.12-slim-bookworm`, copies `uv` from its official image,
 
 ### Streamlit Community Cloud
 
+**Live app:** [rossmann-sales-forecasting-cancinoray.streamlit.app](https://rossmann-sales-forecasting-cancinoray.streamlit.app/)
+
 The dashboard is self-contained: it loads `models/` and `data/processed/rossmann.parquet` directly, so it does not need the FastAPI service to be running.
 
-1. Push the repository to GitHub.
-2. Go to [share.streamlit.io](https://share.streamlit.io) and click **Create app**.
-3. Pick the repository and branch, and set **Main file path** to `streamlit_app.py`.
-4. Open **Advanced settings** and choose **Python 3.12** — Community Cloud cannot change the Python version later without deleting and redeploying the app.
-5. Deploy. The first build installs the environment from `uv.lock`, which Community Cloud detects before `requirements.txt` or `pyproject.toml`.
+| Setting | Value |
+|---|---|
+| Repository | `cancinoray/rossmann-sales-forecasting` |
+| Branch | `main` |
+| Main file path | `streamlit_app.py` |
+| Python version | `3.12` |
+| Secrets | none |
 
-Community Cloud ignores `runtime.txt`; the Python version comes from the Advanced-settings step. The free tier serves public apps and sleeps after inactivity, so the first visit after a pause pays a cold-start cost. The FastAPI endpoint is not hosted there — use Render, Fly, or Railway for a public API if you want one.
+Community Cloud installs the environment from `uv.lock`, which it detects before `requirements.txt` or `pyproject.toml`; there is no second dependency file to maintain. Pushing to `main` rebuilds the app. Keep the app public so peer reviewers can open the URL.
+
+The free tier sleeps after inactivity, so the first visit after a pause pays a cold-start cost. The FastAPI endpoint is not hosted there — use Render, Fly, or Railway for a public API if you want one.
 
 ---
 
@@ -276,7 +293,7 @@ rossmann-sales-forecasting/
 - `prepare_data.py` verifies the raw SHA-256 before building.
 - `models/data_metadata.json` records the processed SHA-256, row counts, and split boundaries.
 - `models/model_metadata.json` records metrics, tuned parameters, library versions, and the training timestamp.
-- A fresh `uv sync && make test` runs the API, serving, history, and dashboard (Streamlit `AppTest`) tests against the committed artifact.
+- A fresh `uv sync --locked && make test` runs the API, serving, history, and dashboard (Streamlit `AppTest`) tests against the committed artifact; `notebook.ipynb` re-executes cleanly from the committed parquet, and `make train` reproduces the committed test metrics (936.59 RMSE / 677.60 MAE / 0.898 R²).
 
 ### Tests
 
@@ -295,17 +312,17 @@ rossmann-sales-forecasting/
 
 | Rubric item | Status |
 |---|---|
-| Problem description (2) | ✅ README §1 |
+| Problem description (2) | ✅ README → The problem |
 | EDA (2) | ✅ README highlights + guided `notebook.ipynb` |
 | Multiple models + tuning (3) | ✅ Ridge, RF, XGBoost; Ridge alpha + XGBoost grid |
 | Notebook → script (1) | ✅ `train.py` |
-| Reproducibility (1) | ✅ committed parquet, hashes, lockfile |
+| Reproducibility (1) | ✅ committed parquet, hashes, lockfile; notebook and `train.py` reproduce metrics |
 | Deployment (1) | ✅ FastAPI + Streamlit dashboard |
-| Dependency management (2) | ✅ `uv` + lock + README |
+| Dependency management (2) | ✅ `uv` + lock + activation steps in README |
 | Containerization (2) | ✅ `Dockerfile` |
-| Cloud deployment (2, optional) | ⬜ not deployed; Community Cloud steps in README |
+| Cloud deployment (2, optional) | ✅ [Live on Streamlit Community Cloud](https://rossmann-sales-forecasting-cancinoray.streamlit.app/) |
 
-**Before submitting:** record the exact commit SHA in the submission form, and add the screenshot/URL if you deploy to Render/Fly.
+**Before submitting:** run a fresh-clone check (`git clone` → `uv sync --locked` → `make test`), record the exact commit SHA in the submission form, and confirm the live Streamlit URL opens in a browser without a login prompt.
 
 ---
 
@@ -315,7 +332,7 @@ rossmann-sales-forecasting/
 - **No external data.** Weather, local events, and competitor openings could improve accuracy; they are deliberately out of scope for the midterm.
 - **The test month is one month.** A rolling-origin backtest over 6–12 months would be a stronger estimate of generalization.
 - **Point forecasts only.** Add quantile regression or conformal intervals for staffing decisions under uncertainty.
-- **Cloud bonus:** deploy the Docker image to Render/Fly/Railway, add the URL and a screenshot to the README.
+- **Cloud API:** the Streamlit dashboard is live on Community Cloud; the FastAPI endpoint is not cloud-hosted — use Render/Fly/Railway if you need a public API.
 - **Monitoring:** log prediction vs actual by store; retrain on a schedule when drift appears.
 
 ---

@@ -1,7 +1,7 @@
 .PHONY: setup data train serve ui test docker-build docker-run docker-ui clean
 
 setup:
-	uv sync
+	uv sync --locked
 
 data:
 	uv run python prepare_data.py
